@@ -1,72 +1,70 @@
 ## @file CalcModule.py
-#  @Ridhwan Chowdhury, 400075426
-#  @This module takes our ReadAllocationData module and now manipulates to sort, average and allocate students into their respective departments 
-#  @January 19th 2019
+#  @author Brooks MacLachlan
+#  @brief Provides methods for performing calculations on student data
+#  @date 1/09/2019
 
-from ReadAllocationData import readStdnts, readFreeChoice, readDeptCapacity
-
+## @brief Sorts a list of students by gpa
+#  @details Accepts a list of dictionaries, each containing data for one
+#           student, and sorts them in descending order of gpa.
+#  @param S List of dictionaries of student data
+#  @return List of dictionaries of student data sorted by gpa
 def sort(S):
-#    took a list of dictionaries, used a sorted function with the key lambda to sort in ascending order, and then used a reverse boolean to make it in descending order
-    sort_dict = sorted(S, key=lambda k: k['gpa'], reverse=True)
-    
-    return sort_dict
+    sortedStudents = sorted(S, key=lambda student: student["gpa"], 
+        reverse=True)
+    return sortedStudents
 
-sort(readStdnts('readstudents.txt'))
-
+## @brief Computes the average gpa of male and female students
+#  @details Accepts a list of dictionaries, each containing data for one
+#           student, and computes the average gpa of all students whose gender
+#           correspond to the gender given by the string argument
+#  @param L List of dictionaries of student data
+#  @param g String representing gender, either 'male' or 'female'
+#  @return Float representing the average gpa of male or female students
 def average(L, g):
-    
-#    intialized the gpa and count for each student, if it met the conditions, it would create a count and accumulate gpa for it to be averaged at the end of the loop
+    genderGpas = [student["gpa"] for student in L if student["gender"] == g]
+    averageGpa = sum(genderGpas) / float(len(genderGpas))
+    return averageGpa
 
-    gpa = 0
-    count = 0
-    for i in L:
-        if i['gender'] == g:
-            gpa = gpa + i['gpa']
-            count = count + 1
-    avg_gpa = gpa/count
-    
-    return avg_gpa
-
-average(readStdnts('readstudents.txt'),'Male')
-
+## @brief Allocates students to an engineering program
+#  @details Allocates students with free choice to their first choice.
+#           Allocates other students, in the order of descending gpa, to their 
+#           first choice if the department capacity has not been reached. If
+#           their first choice is full, the student will be allocated to their
+#           second choice. If their second choice is also full, the student
+#           will be allocated to their third choice. Students with a gpa of 4.0
+#           or lower will not be allocated.
+#  @param S List of dictionaries of student data
+#  @param F List of macids of students with free choice
+#  @param C Dictionary of engineering department capacities
+#  @return Dictionary of departments and the students allocated to them
 def allocate(S, F, C):
-    
-#    initialized dictionary for each department and an empty list that would contain list of student dictionaries
-
-    enroll_dict = { 'civil': [], 'chemical': [], 'electrical': [], 'mechanical': [], 'software': [], 'materials': [], 'engphys': [] }
-    for student in S:
-        
-#        determines students with gpa below 4.0, removes them from list of dictionaries
-
-        if student['gpa'] < 4.0:
-            S.remove(student)
-        else:
-            
-#            determines students with free choice, allocates them into their respective first choice department, removes them from the list of dictionaries
-
-            if student['macid'] in F:
-                enroll_dict[student['choices'][0]].append(student)
-                C[student['choices'][0]] -= 1
-                S.remove(student)
-
-    for student in S:
-        
-#        looks at the remaining students that do not have free choice, and are above a 4.0 gpa, and allocates to respective department based on higher GPA
-
-        if C[student['choices'][0]] > 0:
-            enroll_dict[student['choices'][0]].append(student)
-            S.remove(student)
-            C[student['choices'][0]] -= 1
-        elif C[student['choices'][1]] > 0:
-            enroll_dict[student['choices'][1]].append(student)
-            S.remove(student)
-            C[student['choices'][1]] -= 1
-        else:
-            enroll_dict[student['choices'][2]].append(student)
-            S.remove(student)
-            C[student['choices'][2]] -= 1
-    
-    return enroll_dict
-
-
-allocate(readStdnts('readstudents.txt'), readFreeChoice('freechoice.txt'), readDeptCapacity('departments.txt'))
+    allocatedDict = {
+        "civil": [],
+        "chemical": [],
+        "electrical": [],
+        "mechanical": [],
+        "software": [],
+        "materials": [],
+        "engphys": [],
+    }
+    allMacIds = [student["macid"] for student in S]
+    for macId in F:
+        currentStudent = S[allMacIds.index(macId)]
+        if currentStudent["gpa"] > 4.0:
+            allocatedDict[currentStudent["choices"][0]].append(currentStudent)
+    remainingStudents = [student for student in S if student["macid"] not in F]
+    remainingSorted = sort(remainingStudents)
+    for student in remainingSorted:
+        if student["gpa"] > 4.0:
+            firstChoice = student["choices"][0]
+            if C[firstChoice] > len(allocatedDict[firstChoice]):
+                allocatedDict[firstChoice].append(student)
+                continue
+            secondChoice = student["choices"][1]
+            if C[secondChoice] > len(allocatedDict[secondChoice]):
+                allocatedDict[secondChoice].append(student)
+                continue
+            thirdChoice = student["choices"][2]
+            if C[thirdChoice] > len(allocatedDict[thirdChoice]):
+                allocatedDict[thirdChoice].append(student)
+    return allocatedDict
